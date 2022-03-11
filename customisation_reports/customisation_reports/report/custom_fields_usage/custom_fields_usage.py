@@ -5,6 +5,10 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 
+# TODO: Add filters to report js for app, module, issingle, doctype, usage and error and deal with them in the query
+
+sql_truthy = "COALESCE(SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}` AS CHAR) IN ('0', '0.0', '') THEN 0 ELSE 1 END), 0) AS used"
+
 cf_fields = {
 	('Module Def',): ['app_name'],
 	('DocType',): ['module', 'issingle'],
@@ -14,25 +18,29 @@ cf_fields = {
 def execute(filters=None):
 	from pymysql import Error
 
+	# Get Custom Field list
 	fieldstr = get_fieldstr(cf_fields)
 	custom_fields = frappe.db.sql(f"""
 		SELECT {fieldstr}
 		FROM `tabCustom Field` cf
 		LEFT JOIN `tabDocType` d ON cf.dt=d.name
 		LEFT JOIN `tabModule Def` md ON d.module=md.module_name
-/*		WHERE d.name='Delivery Note' AND cf.fieldname='payment_terms1'*/
 		ORDER BY d.name asc
 	""", as_dict=1)
 
 	columns = get_columns(cf_fields)
 
+	# Count Custom Field values that are 'truthy'
 	for row in custom_fields:
 		dt = row.get('dt')
 		fn = row.get('fieldname')
 		try:
-			# Not empty ?
-			used = frappe.db.sql(f"""SELECT COUNT(*) FROM `tab{dt}` WHERE `{fn}` <> '' """, as_dict=0)[0][0]
-			total = get_row_total(dt)
+			sql  =  ' SELECT COUNT(*) AS total, '
+			sql +=  sql_truthy.format(field=fn)
+			sql += f' FROM `tab{dt}` '
+			data = frappe.db.sql(sql, as_dict=0)[0]
+			print(f'{data} {dt} {fn}')
+			total, used = data
 			error = ''
 		except Error as e:
 			used = 0
@@ -40,7 +48,8 @@ def execute(filters=None):
 			if e.args[0] == 1054:
 				error = e.args[1]
 			elif row.get('issingle'):
-				used = frappe.db.sql(f"""SELECT COUNT(*) FROM `tabSingles` WHERE doctype='{dt}' AND field='{fn}' AND value NOT IN ('', 0) """, as_dict=0)[0][0]
+				sql = sql_truthy.format(field='value')
+				used = frappe.db.sql(f"""SELECT {sql} FROM `tabSingles` WHERE doctype='{dt}' AND field='{fn}' """, as_dict=0)[0][0]
 				total = 1
 			else:
 				raise
@@ -51,18 +60,10 @@ def execute(filters=None):
 
 	columns.append({"label": _("Used"), "fieldname": "used", "fieldtype": "Int"})
 	columns.append({"label": _("Total"), "fieldname": "total", "fieldtype": "Int"})
-	columns.append({"label": _("Usage"), "fieldname": "usage", "fieldtype": "Percent"})
+	columns.append({"label": _("Usage %"), "fieldname": "usage", "fieldtype": "Percent"})
 	columns.append({"label": _("Error"), "fieldname": "error", "fieldtype": "Data"})
 
 	return columns, custom_fields
-
-total_rows = {}
-def get_row_total(doctype):
-	global total_rows
-	if doctype not in total_rows:
-		total = frappe.db.sql(f"""SELECT COUNT(*) FROM `tab{doctype}` """, as_dict=0)[0][0]
-		total_rows[doctype] = total
-	return total_rows[doctype]
 
 def abbrev(dt):
 	return ''.join(l[0].lower() for l in dt.split(' ')) + '.'
