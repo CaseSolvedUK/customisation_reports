@@ -1,0 +1,31 @@
+{
+ "add_total_row": 0,
+ "color": "#5e64ff",
+ "creation": "2022-03-10 18:49:09.998504",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "icon": "octicon-gear",
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Sea-Fire Europe",
+ "modified": "2022-03-10 19:04:25.576918",
+ "modified_by": "Administrator",
+ "module": "Customisation Reports",
+ "name": "Custom Fields Usage",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "",
+ "ref_doctype": "Custom Field",
+ "report_name": "Custom Fields Usage",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "System Manager"
+  }
+ ]
+}
