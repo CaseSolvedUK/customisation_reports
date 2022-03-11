@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 
-# TODO: Add filters to report js for app, module, issingle, doctype, usage and error and deal with them in the query
-
 sql_truthy = "COALESCE(SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}` AS CHAR) IN ('0', '0.0', '') THEN 0 ELSE 1 END), 0) AS used"
 
 cf_fields = {
@@ -20,28 +18,31 @@ def execute(filters=None):
 
 	# Get Custom Field list
 	fieldstr = get_fieldstr(cf_fields)
+	where_clause, remainder_filters = process_filters(fieldstr, filters)
+
 	custom_fields = frappe.db.sql(f"""
 		SELECT {fieldstr}
 		FROM `tabCustom Field` cf
 		LEFT JOIN `tabDocType` d ON cf.dt=d.name
 		LEFT JOIN `tabModule Def` md ON d.module=md.module_name
+		{where_clause}
 		ORDER BY d.name asc
 	""", as_dict=1)
 
 	columns = get_columns(cf_fields)
 
 	# Count Custom Field values that are 'truthy'
+	filtered = []
 	for row in custom_fields:
 		dt = row.get('dt')
 		fn = row.get('fieldname')
 		try:
+			error = ''
 			sql  =  ' SELECT COUNT(*) AS total, '
 			sql +=  sql_truthy.format(field=fn)
 			sql += f' FROM `tab{dt}` '
 			data = frappe.db.sql(sql, as_dict=0)[0]
-			print(f'{data} {dt} {fn}')
 			total, used = data
-			error = ''
 		except Error as e:
 			used = 0
 			total = 0
@@ -53,17 +54,43 @@ def execute(filters=None):
 				total = 1
 			else:
 				raise
+
+		usage = ((100 * used) / total) if used else 0.0
 		row['used'] = used
 		row['total'] = total
-		row['usage'] = ((100 * used) / total) if used else 0.0
+		row['usage'] = usage
 		row['error'] = error
+		# Filter
+		for filt_field, filt_value in remainder_filters.items():
+			if filt_field == 'usage' and usage > filt_value:
+				break
+			if filt_field == 'error' and filt_value not in error:
+				break
+		else:
+			filtered.append(row)
 
 	columns.append({"label": _("Used"), "fieldname": "used", "fieldtype": "Int"})
 	columns.append({"label": _("Total"), "fieldname": "total", "fieldtype": "Int"})
 	columns.append({"label": _("Usage %"), "fieldname": "usage", "fieldtype": "Percent"})
 	columns.append({"label": _("Error"), "fieldname": "error", "fieldtype": "Data"})
 
-	return columns, custom_fields
+	return columns, filtered
+
+def process_filters(fieldstr, filters):
+	fields = fieldstr.split(', ')
+	remainder = filters.copy()
+	where = []
+	for filt_field, filt_value in filters.items():
+		# TODO: scrub filt_value due to sql injection
+		for fmt_field in fields:
+			if '.' + filt_field in fmt_field:
+				remainder.pop(filt_field)
+				condition = ''
+				if not where:
+					condition += 'WHERE '
+				condition += f"{fmt_field} LIKE '%{filt_value}%'"
+				where.append(condition)
+	return ' AND '.join(where), remainder
 
 def abbrev(dt):
 	return ''.join(l[0].lower() for l in dt.split(' ')) + '.'
