@@ -6,7 +6,7 @@ import frappe
 from frappe import _
 from ..utils import *
 
-sql_truthy = "COALESCE(SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}` AS CHAR) IN ('0', '0.0', '') THEN 0 ELSE 1 END), 0) AS used"
+sql_truthy = "SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}` AS CHAR) IN ('0', '0.0', '') THEN 0 ELSE 1 END)"
 
 cf_fields = {
 	('Module Def',): ['app_name'],
@@ -46,8 +46,9 @@ def execute(filters=None):
 		try:
 			error = ''
 			sql  =  ' SELECT COUNT(*) AS total, '
-			sql +=  sql_truthy.format(field=fn)
-			sql += f' FROM `tab{dt}` '
+			truthy = sql_truthy.format(field=fn)
+			sql +=  f'COALESCE({truthy}, 0) AS used '
+			sql += f'FROM `tab{dt}` '
 			data = frappe.db.sql(sql, as_dict=0)[0]
 			total, used = data
 		except Error as e:
@@ -56,9 +57,13 @@ def execute(filters=None):
 			if e.args[0] == 1054:
 				error = e.args[1]
 			elif row.get('issingle'):
-				sql = sql_truthy.format(field='value')
-				used = frappe.db.sql(f"""SELECT {sql} FROM `tabSingles` WHERE doctype='{dt}' AND field='{fn}' """, as_dict=0)[0][0]
-				total = 1
+				truthy = sql_truthy.format(field='value')
+				used = frappe.db.sql(f"""SELECT {truthy} FROM `tabSingles` WHERE doctype='{dt}' AND field='{fn}' """, as_dict=0)[0][0]
+				if used is None:
+					used, total = 0, 0
+					error = f"Unknown column '{fn}' in 'field list'"
+				else:
+					total = 1
 			else:
 				raise
 

@@ -21,7 +21,7 @@ frappe.query_reports["DocField Usage"] = {
 			"fieldtype": "Check"
 		},
 		{
-			"fieldname":"dt",
+			"fieldname":"name",
 			"label": __("Doctype"),
 			"fieldtype": "Link",
 			"options": "DocType"

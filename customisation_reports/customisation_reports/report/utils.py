@@ -18,6 +18,7 @@ from frappe import _
 # Use 'as' to rename common field names
 # The SQL query table abbreviations in execute() must match those assumed by abbrev(): DocType -> dt
 
+# UI field types
 ignore_fieldtypes = ('Button', 'Column Break', 'Fold', 'Password', 'Section Break', 'Table')
 
 def process_filters(fieldstr, filters):
