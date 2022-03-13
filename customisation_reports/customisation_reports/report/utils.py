@@ -89,12 +89,20 @@ def get_columns(fieldlist, modify_report_columns=modify_report_columns):
 							"fieldtype": db_field.fieldtype,
 							"options": db_field.options
 						}
-					elif old_name == 'name':
+				# Deal with standard fields
+				if not fieldmeta:
+					if old_name == 'name':
 						fieldmeta = {
-							"label": _(doctype),
+							"label": _(doctype + ' Name'),
 							"fieldname": new_name,
 							"fieldtype": 'Link',
 							"options": doctype
+						}
+					elif old_name == 'parent':
+						fieldmeta = {
+							"label": _(doctype + ' Parent'),
+							"fieldname": new_name,
+							"fieldtype": 'Data'
 						}
 				# edit the columns to match the modified data
 				col = modify_report_columns(doctype, new_name, fieldmeta)
