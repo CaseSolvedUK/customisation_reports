@@ -24,10 +24,10 @@ def execute(filters=None):
 	custom_fields = frappe.db.sql(f"""
 		SELECT {fieldstr}
 		FROM `tabCustom Field` cf
-		LEFT JOIN `tabDocType` d ON cf.dt=d.name
-		LEFT JOIN `tabModule Def` md ON d.module=md.module_name
+		LEFT JOIN `tabDocType` dt ON cf.dt=dt.name
+		LEFT JOIN `tabModule Def` md ON dt.module=md.module_name
 		{where_clause}
-		ORDER BY d.name asc
+		ORDER BY dt.name asc
 	""", as_dict=1)
 
 	columns = get_columns(cf_fields, modify_report_columns)
@@ -70,10 +70,10 @@ def execute(filters=None):
 		else:
 			filtered.append(row)
 
-	columns.append({"label": _("Used"), "fieldname": "used", "fieldtype": "Int"})
-	columns.append({"label": _("Total"), "fieldname": "total", "fieldtype": "Int"})
+	columns.append({"label": _("Used Rows"), "fieldname": "used", "fieldtype": "Int"})
+	columns.append({"label": _("Total Rows"), "fieldname": "total", "fieldtype": "Int"})
 	columns.append({"label": _("Usage %"), "fieldname": "usage", "fieldtype": "Percent"})
-	columns.append({"label": _("Error"), "fieldname": "error", "fieldtype": "Data"})
+	columns.append({"label": _("SQL Error"), "fieldname": "error", "fieldtype": "Data"})
 
 	return columns, filtered
 

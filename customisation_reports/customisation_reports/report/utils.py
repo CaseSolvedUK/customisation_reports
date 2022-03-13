@@ -5,7 +5,21 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 
+# Does the heavy lifting for creating a script report
+# Example fieldlist:
+# fieldlist = {
+#        ('Module Def',): ['app_name'],
+#        ('DocType', 1): ['module', 'issingle'],
+#        ('Custom Field',): ['dt', 'label', 'fieldname', 'fieldtype', 'name as custom_field_name'],
+#        ('DocType', 2): ['istable']
+#}
+# The index in dict key allows the same table to be referred to more than once. Field ordering is preserved.
+# More than one table can be listed in the dict key in which case they are expected to have common fields that will be coalesced, e.g. Sales Invoice and Purchase Invoice
+# Use 'as' to rename common field names
+# The SQL query table abbreviations in execute() must match those assumed by abbrev(): DocType -> dt
+
 def process_filters(fieldstr, filters):
+	"Creates a where clause if fields are in the fieldstr. Report filters must be defined with the database name as fieldname"
 	fields = fieldstr.split(', ')
 	remainder = filters.copy()
 	where = []
@@ -22,7 +36,7 @@ def process_filters(fieldstr, filters):
 	return ' AND '.join(where), remainder
 
 def abbrev(dt):
-	return ''.join(l[0].lower() for l in dt.split(' ')) + '.'
+	return ''.join(ch.lower() for ch in dt if ch.isupper()) + '.'
 
 def doclist(dt, dfs):
 	return [abbrev(dt) + f for f in dfs]

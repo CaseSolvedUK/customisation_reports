@@ -26,5 +26,11 @@ frappe.query_reports["Doctype Usage"] = {
 			"fieldtype": "Link",
 			"options": "DocType"
 		},
+		{
+			"fieldname":"total",
+			"label": __("Total Rows"),
+			"fieldtype": "Select",
+			"options": "\n==0\n!=0"
+		},
 	]
 }

@@ -17,22 +17,32 @@ def execute(filters=None):
 	where_clause, remainder_filters = process_filters(fieldstr, filters)
 	doctypes = frappe.db.sql(f"""
 		SELECT {fieldstr}
-		FROM `tabDocType` d
-		LEFT JOIN `tabModule Def` md ON d.module=md.module_name
+		FROM `tabDocType` dt
+		LEFT JOIN `tabModule Def` md ON dt.module=md.module_name
 		{where_clause}
-		ORDER BY d.name asc
+		ORDER BY dt.name asc
 	""", as_dict=1)
 
 	columns = get_columns(dt_fields)
 
 	# Get row counts and merge with doctypes
+	filtered = []
 	for row in doctypes:
 		dt = row.get('dt')
 		if row.get('issingle'):
-			row['total'] = bool(frappe.db.exists(dt))
+			total = 1 if frappe.db.exists(dt) else 0
 		else:
-			row['total'] = frappe.db.count(dt)
+			total = frappe.db.count(dt)
+		row['total'] = total
 
-	columns.append({"label": _("Total"), "fieldname": "total", "fieldtype": "Int"})
+		# Filters
+		for filt_field, filt_value in remainder_filters.items():
+			if filt_field == 'total' and filt_value:
+				if not eval('total ' + filt_value):
+					break
+		else:
+			filtered.append(row)
 
-	return columns, doctypes
+	columns.append({"label": _("Total Rows"), "fieldname": "total", "fieldtype": "Int"})
+
+	return columns, filtered

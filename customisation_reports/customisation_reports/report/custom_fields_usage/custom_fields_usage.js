@@ -33,7 +33,7 @@ frappe.query_reports["Custom Fields Usage"] = {
 		},
 		{
 			"fieldname":"error",
-			"label": __("Error"),
+			"label": __("SQL Error"),
 			"fieldtype": "Data"
 		},
 	]
