@@ -11,7 +11,7 @@ sql_truthy = "COALESCE(SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}
 df_fields = {
 	('Module Def',): ['app_name'],
 	('DocType',): ['module', 'issingle', 'name as dt'],
-	('DocField',): ['label', 'fieldname', 'fieldtype']
+	('DocField',): ['label', 'fieldname', 'fieldtype', 'reqd']
 }
 
 def execute(filters=None):
@@ -20,6 +20,12 @@ def execute(filters=None):
 	# Get DocField list
 	fieldstr = get_fieldstr(df_fields)
 	where_clause, remainder_filters = process_filters(fieldstr, filters)
+
+	if where_clause:
+		where_clause += ' AND '
+	else:
+		where_clause = 'WHERE '
+	where_clause += f'df.fieldtype NOT IN {ignore_fieldtypes}'
 
 	docfields = frappe.db.sql(f"""
 		SELECT {fieldstr}
