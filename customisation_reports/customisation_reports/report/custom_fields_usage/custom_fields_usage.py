@@ -30,7 +30,7 @@ def execute(filters=None):
 		ORDER BY dt.name asc
 	""", as_dict=1)
 
-	columns = get_columns(cf_fields, modify_report_columns)
+	columns = get_columns(cf_fields)
 
 	# Count Custom Field values that are 'truthy'
 	filtered = []
@@ -76,10 +76,3 @@ def execute(filters=None):
 	columns.append({"label": _("SQL Error"), "fieldname": "error", "fieldtype": "Data"})
 
 	return columns, filtered
-
-def modify_report_columns(doctype, field, column):
-	"Changes to match any data manipulation or missing column info"
-	if doctype in ("Custom Field"):
-		if field == "custom_field_name":
-			return {"label": _("Custom Field Name"), "fieldname": "custom_field_name", "fieldtype": "Link", "options": "Custom Field"}
-	return column
