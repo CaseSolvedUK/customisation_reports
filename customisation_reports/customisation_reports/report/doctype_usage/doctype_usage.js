@@ -7,7 +7,7 @@ frappe.query_reports["Doctype Usage"] = {
 		{
 			"fieldname":"app_name",
 			"label": __("App Name"),
-			"fieldtype": "Data",
+			"fieldtype": "Data"
 		},
 		{
 			"fieldname":"module",
@@ -18,7 +18,8 @@ frappe.query_reports["Doctype Usage"] = {
 		{
 			"fieldname":"issingle",
 			"label": __("Is Single"),
-			"fieldtype": "Check"
+			"fieldtype": "Select",
+			"options": "\n0\n1"
 		},
 		{
 			"fieldname":"name",

@@ -15,7 +15,7 @@ df_fields = {
 }
 
 def execute(filters=None):
-	from pymysql import Error
+	from pymysql import MySQLError
 
 	# Get DocField list
 	fieldstr = get_fieldstr(df_fields)
@@ -45,22 +45,26 @@ def execute(filters=None):
 		fn = row.get('fieldname')
 		try:
 			error = ''
-			sql  =  ' SELECT COUNT(*) AS total, '
+			# Set mariadb max statement time=3s for large tables
+			sql  =  'SET STATEMENT max_statement_time=3 FOR SELECT COUNT(*) AS total, '
 			truthy = sql_truthy.format(field=fn)
 			sql +=  f'COALESCE({truthy}, 0) AS used '
 			sql += f'FROM `tab{dt}` '
 			data = frappe.db.sql(sql, as_dict=0)[0]
 			total, used = data
-		except Error as e:
+		except MySQLError as e:
 			used = 0
 			total = 0
-			if e.args[0] == 1054:
+			# Unknown column or query timeout
+			if e.args[0] in (1054, 1969):
 				error = e.args[1]
-			elif row.get('issingle'):
+			# Table doesn't exist
+			elif e.args[0] == 1146 and row.get('issingle'):
 				truthy = sql_truthy.format(field='value')
 				used = frappe.db.sql(f"""SELECT {truthy} FROM `tabSingles` WHERE doctype='{dt}' AND field='{fn}' """, as_dict=0)[0][0]
 				if used is None:
 					used, total = 0, 0
+					# Mimic Unknown column
 					error = f"Unknown column '{fn}' in 'field list'"
 				else:
 					total = 1

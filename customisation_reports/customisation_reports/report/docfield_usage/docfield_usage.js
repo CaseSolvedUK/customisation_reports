@@ -18,7 +18,8 @@ frappe.query_reports["DocField Usage"] = {
 		{
 			"fieldname":"issingle",
 			"label": __("Is Single"),
-			"fieldtype": "Check"
+			"fieldtype": "Select",
+			"options": "\n0\n1"
 		},
 		{
 			"fieldname":"name",
