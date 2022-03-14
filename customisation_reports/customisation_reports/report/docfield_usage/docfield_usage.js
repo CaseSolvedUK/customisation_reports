@@ -23,9 +23,14 @@ frappe.query_reports["DocField Usage"] = {
 		},
 		{
 			"fieldname":"name",
-			"label": __("Doctype"),
+			"label": __("DocType"),
 			"fieldtype": "Link",
 			"options": "DocType"
+		},
+		{
+			"fieldname":"fieldname",
+			"label": __("DocField Name"),
+			"fieldtype": "Data"
 		},
 		{
 			"fieldname":"usage",
