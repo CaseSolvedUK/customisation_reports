@@ -29,13 +29,16 @@ def save_all_customisations(module):
 					filters={'dt': dt, 'options': ('!=', 'Workflow State')},
 					fields=['name', 'insert_after'], as_list=True):
 					merge_custom_field(cf, insert_after, dt)
-				for (ps,) in frappe.db.get_all('Property Setter', filters={'doc_type': dt}, fields=['name'], as_list=True):
-					merge_property_setter(ps, dt)
-			frappe.db.commit()
+
+				pss = frappe.db.get_all('Property Setter',
+					filters={'doc_type': dt},
+					fields=['name'], as_list=True)
+				merge_property_setters(pss, dt)
 
 			for dt in custom_doctypes:
 				#Save customisation to module
 				pass
+
 		elif custom in ('Data Migration Plan',):
 			# Ignore
 			pass
@@ -86,6 +89,7 @@ def merge_custom_field(field, insert_after, doctype):
 	dt.set('fields', [])
 	found = False
 	for f in fields:
+		# append will reset the idx but only if it's zero
 		f.idx = 0
 		if not insert_after and not found:
 			found = dt.append('fields', cf)
@@ -93,14 +97,40 @@ def merge_custom_field(field, insert_after, doctype):
 		if insert_after == f.fieldname:
 			found = dt.append('fields', cf)
 
-	# Ensure the 'custom' field is set - means you can't create Custom Fields on it
+	# Ensure the 'custom' field is set - prevents error about standard doctypes not being allowed a default print format
 	dt.custom = 1
 	dt.save()
 	frappe.delete_doc('Custom Field', field)
 	frappe.db.commit()
 
-def merge_property_setter(setter, doctype):
-	pass
+def merge_property_setters(setters, doctype):
+	"Straight overwrite of DocType/Field properties. If the DocField is not found the property setter will be removed"
+	dt = frappe.get_doc('DocType', doctype)
+	# Ensure the 'custom' field is set - means you can't create customisations on it
+	dt.custom = 1
+	for (setter,) in setters:
+		ps = frappe.get_doc('Property Setter', setter)
+		print(f"Merging Property Setter '{setter}' into '{ps.doctype_or_field}' of '{doctype}'")
+
+		object = None
+		if ps.doctype_or_field == 'DocField':
+			for f in dt.fields:
+				if f.fieldname == ps.field_name:
+					object = f
+					break
+			else:
+				print('  Warning: DocField not found, removing Property Setter with no action')
+		else:
+			object = dt
+
+		if object:
+			value = frappe.format_value(ps.value, df=ps.property_type)
+			object.set(ps.property, value)
+
+		frappe.delete_doc('Property Setter', setter)
+
+	dt.save()
+	frappe.db.commit()
 
 # save out all customisations:
 #(('Print Format',), ('Notification',), ('Report',), ('Web Form',), ('Website Theme',), ('Page',), ('Data Migration Plan',), ('DocType',))
