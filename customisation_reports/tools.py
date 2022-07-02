@@ -3,6 +3,7 @@
 
 import frappe
 import sys
+from frappe.modules.utils import export_customizations
 
 
 def save_all_customisations(module):
@@ -19,6 +20,8 @@ def save_all_customisations(module):
 		custom_doctypes += [x[0] for x in frappe.db.get_all('DocType', filters={'module': mod}, fields=['name'], as_list=True)]
 
 	# Go through all the customisations saving them
+	saved_mode = frappe.conf.developer_mode
+	frappe.conf.developer_mode = 1
 	customisation_dts = [x[0] for x in frappe.db.get_all('DocField', filters={'fieldtype': 'Link', 'options': 'Module Def'}, fields=['parent'], as_list=True)]
 	for custom in customisation_dts:
 		if custom == 'DocType':
@@ -31,19 +34,24 @@ def save_all_customisations(module):
 					merge_custom_field(cf, insert_after, dt)
 
 				pss = frappe.db.get_all('Property Setter',
-					filters={'doc_type': dt},
+					filters={'doc_type': dt, 'property': ('!=', 'default_print_format')},
 					fields=['name'], as_list=True)
 				merge_property_setters(pss, dt)
 
 			for dt in custom_doctypes:
-				#Save customisation to module
-				pass
+				# Save custom doctypes to module
+				frappe.get_doc('DocType', dt).save()
+			for (dt,) in frappe.get_all('DocType', fields=['name'], as_list=True):
+				# Save ALL doctype customisations to module
+				export_customizations(module, dt, sync_on_migrate=1, with_permissions=1)
 
 		elif custom in ('Data Migration Plan',):
 			# Ignore
 			pass
 		else:
 			print(f'Error: Customisation not saved: {custom}', file=sys.stderr)
+	frappe.conf.developer_mode = saved_mode
+
 
 def merge_custom_field(field, insert_after, doctype):
 	"""
@@ -97,8 +105,6 @@ def merge_custom_field(field, insert_after, doctype):
 		if insert_after == f.fieldname:
 			found = dt.append('fields', cf)
 
-	# Ensure the 'custom' field is set - prevents error about standard doctypes not being allowed a default print format
-	dt.custom = 1
 	dt.save()
 	frappe.delete_doc('Custom Field', field)
 	frappe.db.commit()
@@ -106,8 +112,6 @@ def merge_custom_field(field, insert_after, doctype):
 def merge_property_setters(setters, doctype):
 	"Straight overwrite of DocType/Field properties. If the DocField is not found the property setter will be removed"
 	dt = frappe.get_doc('DocType', doctype)
-	# Ensure the 'custom' field is set - means you can't create customisations on it
-	dt.custom = 1
 	for (setter,) in setters:
 		ps = frappe.get_doc('Property Setter', setter)
 		print(f"Merging Property Setter '{setter}' into '{ps.doctype_or_field}' of '{doctype}'")
