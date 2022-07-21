@@ -5,13 +5,14 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from ..utils import *
+from frappe.model import no_value_fields
 
 sql_truthy = "SUM(CASE WHEN `{field}` IS NULL THEN 0 WHEN CAST(`{field}` AS CHAR) IN ('0', '0.0', '') THEN 0 ELSE 1 END)"
 
 df_fields = {
 	('Module Def',): ['app_name'],
 	('DocType',): ['module', 'issingle', 'name as dt'],
-	('DocField',): ['label', 'fieldname', 'fieldtype', 'reqd']
+	('DocField',): ['label', 'fieldname', 'fieldtype', 'options', 'reqd']
 }
 
 def execute(filters=None):
@@ -25,7 +26,7 @@ def execute(filters=None):
 		where_clause += ' AND '
 	else:
 		where_clause = 'WHERE '
-	where_clause += f'df.fieldtype NOT IN {ignore_fieldtypes}'
+	where_clause += f'df.fieldtype NOT IN {no_value_fields}'
 
 	docfields = frappe.db.sql(f"""
 		SELECT {fieldstr}
